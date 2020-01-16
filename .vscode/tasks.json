@@ -1,0 +1,20 @@
+{
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "xtensa-esp32-elf-gcc.exe build active file",
+            "command": "C:/Users/oesterheld/.platformio/packages/toolchain-xtensa32/bin/xtensa-esp32-elf-gcc.exe",
+            "args": [
+                "-g",
+                "${file}",
+                "-o",
+                "${fileDirname}\\${fileBasenameNoExtension}.exe",
+                "-mlongcalls"
+            ],
+            "options": {
+                "cwd": "C:/Users/oesterheld/.platformio/packages/toolchain-xtensa32/bin"
+            }
+        }
+    ],
+    "version": "2.0.0"
+}
