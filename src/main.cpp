@@ -2,8 +2,8 @@
 #include <EEPROM.h>
 
 // pins
-int BUTTON_UP = D1;
-int BUTTON_DOWN = D2;
+int BUTTON_UP = D1;   // pull-up !
+int BUTTON_DOWN = D2; // pull-up !
 int US_TRIGGER = D3;
 int US_ECHO = D4;
 int OUTPUT_UP = D5;
@@ -20,8 +20,8 @@ direction initialDirection = NONE;
 bool buttonPressed = false;
 bool buttonLongPressed = false;
 bool positionStored = false;
-long buttonTimer = 0;
-long longPressTimeout = 1000;
+uint32_t  buttonTimer = 0;
+uint32_t  longPressTimeout = 1000;
 
 // variables for driving desk
 int positionUp;
@@ -30,8 +30,8 @@ int EEPROM_UP = 0;
 int EEPROM_DOWN = 1;
 direction drivingDirection = NONE;
 mode drivingMode = MANUAL;
-long drivingTimer = 0;
-long drivingTimeout = 10000;
+uint32_t  drivingTimer = 0;
+uint32_t  drivingTimeout = 10000;
 
 // stop driving desk
 void stopDesk() {
@@ -130,9 +130,11 @@ int measurePosition() {
  
 // measure and store current position for given direction
 void storePosition(direction dir) {
-  int position = measurePosition();
-  position = (position > 255) ? 255 : (position < 0) ? 0 : position;
-  writeToEeprom(position, dir);
+  if (!positionStored) {
+    int position = measurePosition();
+    position = (position > 255) ? 255 : (position < 0) ? 0 : position;
+    writeToEeprom(position, dir);
+  }
   positionStored = true;
 }
 
@@ -172,7 +174,7 @@ void loop() {
     }
   }  
 
-  if (buttonPressed && (millis() - buttonTimer > longPressTimeout) 
+  if (buttonPressed && ((millis() - buttonTimer) > longPressTimeout) 
       && !buttonLongPressed && !positionStored) { // long press button
     buttonLongPressed = true;
     driveDesk(initialDirection);
@@ -193,7 +195,7 @@ void loop() {
   }
 
   if (drivingDirection != NONE) {
-    if (millis() - drivingTimer > drivingTimeout) {
+    if ((millis() - drivingTimer) > drivingTimeout) {
       stopDesk();
     } else if (drivingMode == AUTOMATIC) {
       long currentPosition = measurePosition();
