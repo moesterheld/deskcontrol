@@ -2,12 +2,14 @@
 #include <EEPROM.h>
 
 // pins
-int BUTTON_UP = D1;   // pull-up !
-int BUTTON_DOWN = D2; // pull-up !
-int US_TRIGGER = D3;
-int US_ECHO = D4;
+int BUTTON_UP = D2;   // pull-up !
+int BUTTON_DOWN = D1; // pull-up !
+int US_TRIGGER = D7;
+int US_ECHO = D8;
 int OUTPUT_UP = D5;
 int OUTPUT_DOWN = D6;
+int LED_UP = D3;
+int LED_DOWN = D4;
 
 // variables for button logic
 enum direction {
@@ -24,6 +26,7 @@ uint32_t  buttonTimer = 0;
 uint32_t  longPressTimeout = 1000;
 
 // variables for driving desk
+int lastPosition;
 int positionUp;
 int positionDown;
 int EEPROM_UP = 0;
@@ -35,9 +38,12 @@ uint32_t  drivingTimeout = 10000;
 
 // stop driving desk
 void stopDesk() {
+  Serial.println("Stopping desk");
   // stop motor
   digitalWrite(OUTPUT_UP, LOW);
+  digitalWrite(LED_UP, LOW);
   digitalWrite(OUTPUT_DOWN, LOW);
+  digitalWrite(LED_DOWN, LOW);
   drivingDirection = NONE;
   drivingMode = MANUAL;
 }
@@ -57,10 +63,12 @@ void driveDesk(direction dir) {
   if (dir == UP) {
     Serial.println("Driving desk up");
     digitalWrite(OUTPUT_UP, HIGH);
+    digitalWrite(LED_UP, HIGH);
     drivingDirection = UP;
   } else {
     Serial.println("Driving desk down");
     digitalWrite(OUTPUT_DOWN, HIGH);
+    digitalWrite(LED_DOWN, HIGH);
     drivingDirection = DOWN;
   }
 }
@@ -72,6 +80,12 @@ void autoDriveDesk(direction dir) {
     stopDesk();
     return;
   } 
+
+  if ((dir == UP && lastPosition >= positionUp) || (dir == DOWN && lastPosition <= positionDown)) {
+    Serial.println("Not driving desk. Already in position.");
+    return;
+  }
+
   Serial.print("Driving desk to position ");
   if (dir == UP) {
     Serial.println("UP");
@@ -82,30 +96,46 @@ void autoDriveDesk(direction dir) {
   driveDesk(dir);
 }
 
+void blink(int ledPin) {
+  for (int i=0; i<3; i++) {
+    digitalWrite(ledPin, HIGH);
+    delay(300);
+    digitalWrite(ledPin, LOW);
+  }
+}
+
 // store position to eeprom
 void writeToEeprom(int position, direction dir) {
   position = (position < 0 || position > 255) ? 100 : position;
+  EEPROM.begin(2);
   if (dir == UP) {
     Serial.print("Storing position UP: ");
     if (position != EEPROM.read(EEPROM_UP)) {
+      Serial.print("*new* ");
       EEPROM.write(EEPROM_UP, position);
     }
+    blink(LED_UP);
     positionUp = position;
   } else {
     Serial.print("Storing position DOWN: ");
     if (position != EEPROM.read(EEPROM_DOWN)) {
+      Serial.print("*new* ");
       EEPROM.write(EEPROM_DOWN, position);
     }
+    blink(LED_DOWN);
     positionDown = position;
   }
+  EEPROM.commit();
   Serial.println(position);
 }
 
 // read up and down positions from eeprom and store in global variables
 void readPositions() {
+  EEPROM.begin(2);
   Serial.println("Reading positions from EEPROM");
   positionUp = EEPROM.read(EEPROM_UP);
   positionDown = EEPROM.read(EEPROM_DOWN);
+  EEPROM.end();
   Serial.print("Position UP: ");
   Serial.println(positionUp);
   Serial.print("Position DOWN: ");
@@ -125,6 +155,9 @@ int measurePosition() {
   long duration = pulseIn(US_ECHO, HIGH);
   // Calculating the distance
   int distance = duration*0.034/2;
+  Serial.print("Current position: ");
+  Serial.println(distance);
+  lastPosition = distance;
   return distance;
 }
  
@@ -139,7 +172,13 @@ void storePosition(direction dir) {
 }
 
 // run when button press is started
-void initializeButtonPress(direction dir) {
+void initializeButtonPress(direction dir) {  
+  Serial.print("Button pressed: ");
+  if (dir == UP) {
+    Serial.println("UP");
+  } else {
+    Serial.println("DOWN");
+  }
   buttonPressed = true;
   buttonTimer = millis();
   initialDirection = dir;
@@ -152,11 +191,18 @@ void setup() {
   pinMode(US_TRIGGER, OUTPUT);
   pinMode(OUTPUT_UP, OUTPUT);
   pinMode(OUTPUT_DOWN, OUTPUT);
+  pinMode(LED_UP, OUTPUT);
+  pinMode(LED_DOWN, OUTPUT);
   Serial.begin(9600);
   readPositions();
+  measurePosition();
 }
 
 void loop() {
+
+  if (lastPosition == 0) {
+    measurePosition();
+  }
 
   if (digitalRead(BUTTON_UP) == LOW) { 
     if (!buttonPressed) {
@@ -168,7 +214,7 @@ void loop() {
 
   if (digitalRead(BUTTON_DOWN) == LOW) { 
     if (!buttonPressed) {
-      initializeButtonPress(UP);
+      initializeButtonPress(DOWN);
     } else if (!buttonLongPressed && initialDirection == UP) {
       storePosition(initialDirection);
     }
@@ -196,12 +242,15 @@ void loop() {
 
   if (drivingDirection != NONE) {
     if ((millis() - drivingTimer) > drivingTimeout) {
+      Serial.println("ERROR: Driving timeout reached!");
       stopDesk();
     } else if (drivingMode == AUTOMATIC) {
       long currentPosition = measurePosition();
       if (drivingDirection == UP && currentPosition >= positionUp) {
+        Serial.println("UP Position reached!");
         stopDesk();
       } else if (drivingDirection == DOWN && currentPosition <= positionDown) {
+        Serial.println("DOWN Position reached!");
         stopDesk();
       }
     }
