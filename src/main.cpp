@@ -1,15 +1,16 @@
 #include <Arduino.h>
 #include <EEPROM.h>
+#include <MyUltrasoundSensor.h>
 
 // pins
-int BUTTON_UP = D2;   // pull-up !
-int BUTTON_DOWN = D1; // pull-up !
-int US_TRIGGER = D7;
-int US_ECHO = D8;
+int BUTTON_UP = D1;   // pull-up !
+int BUTTON_DOWN = D2; // pull-up !
+int US_TRIGGER = D3;
+int US_ECHO = D0;
 int OUTPUT_UP = D5;
 int OUTPUT_DOWN = D6;
-int LED_UP = D3;
-int LED_DOWN = D4;
+int LED_UP = D7;
+int LED_DOWN = D8;
 
 // variables for button logic
 enum direction {
@@ -26,6 +27,7 @@ uint32_t  buttonTimer = 0;
 uint32_t  longPressTimeout = 1000;
 
 // variables for driving desk
+MyUltrasoundSensor uss(US_TRIGGER, US_ECHO);
 int lastPosition;
 int positionUp;
 int positionDown;
@@ -34,7 +36,7 @@ int EEPROM_DOWN = 1;
 direction drivingDirection = NONE;
 mode drivingMode = MANUAL;
 uint32_t  drivingTimer = 0;
-uint32_t  drivingTimeout = 10000;
+uint32_t  drivingTimeout = 20000;
 
 // stop driving desk
 void stopDesk() {
@@ -99,8 +101,11 @@ void autoDriveDesk(direction dir) {
 void blink(int ledPin) {
   for (int i=0; i<3; i++) {
     digitalWrite(ledPin, HIGH);
-    delay(300);
+    delay(200);
     digitalWrite(ledPin, LOW);
+    if (i<2) {
+      delay(200);
+    }
   }
 }
 
@@ -143,7 +148,7 @@ void readPositions() {
 }
 
 // measure position in cm using HC-SR04
-int measurePosition() {
+int measure() {
   // Clears the trigPin
   digitalWrite(US_TRIGGER, LOW);
   delayMicroseconds(2);
@@ -155,6 +160,11 @@ int measurePosition() {
   long duration = pulseIn(US_ECHO, HIGH);
   // Calculating the distance
   int distance = duration*0.034/2;
+  return distance;
+}
+
+int measurePosition() {
+  int distance = uss.distanceTempCompMedian(20);
   Serial.print("Current position: ");
   Serial.println(distance);
   lastPosition = distance;
@@ -187,22 +197,18 @@ void initializeButtonPress(direction dir) {
 void setup() {
   pinMode(BUTTON_UP, INPUT);
   pinMode(BUTTON_DOWN, INPUT);
-  pinMode(US_ECHO, INPUT);
-  pinMode(US_TRIGGER, OUTPUT);
   pinMode(OUTPUT_UP, OUTPUT);
   pinMode(OUTPUT_DOWN, OUTPUT);
   pinMode(LED_UP, OUTPUT);
   pinMode(LED_DOWN, OUTPUT);
   Serial.begin(9600);
   readPositions();
+  uss.medianNumber = 3;
+  uss.measureDelay = 30;
   measurePosition();
 }
 
 void loop() {
-
-  if (lastPosition == 0) {
-    measurePosition();
-  }
 
   if (digitalRead(BUTTON_UP) == LOW) { 
     if (!buttonPressed) {
@@ -231,6 +237,7 @@ void loop() {
       if (buttonLongPressed) {
         buttonLongPressed = false;
         stopDesk();
+        measurePosition();
       } else if (!positionStored) {
         autoDriveDesk(initialDirection);
       }
