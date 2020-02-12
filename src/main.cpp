@@ -7,8 +7,8 @@ int BUTTON_UP = D1;   // pull-up !
 int BUTTON_DOWN = D2; // pull-up !
 int US_TRIGGER = D3;
 int US_ECHO = D0;
-int OUTPUT_UP = D5;
-int OUTPUT_DOWN = D6;
+int OUTPUT_UP = D6;
+int OUTPUT_DOWN = D5;
 int LED_UP = D7;
 int LED_DOWN = D8;
 
