@@ -32,7 +32,7 @@ Aus Platz- und Kostengründen wird für das veröffentlichte Projekt auf einen W
 
 Auf die beiden LEDs sowie zwei der zugehörigen 220&#8486; Vorwiderstände kann verzichtet werden. Sie dienen lediglich der optischen Anzeige der aktuell betätigten Fahrtrichtung. Zusätzlich wird das Speichern der Position als Blinken angezeigt.
 
-Der Anschluss erfolgt gemäß dem DeskControlDeluxe.fzz Entwurfs als Prototyp
+Der Anschluss erfolgt gemäß dem [Fritzing Entwurfs](DeskControlDeluxe.fzz) als Prototyp
 
 ![Prototype](DeskControlDeluxe_Steckplatine.png)
 
